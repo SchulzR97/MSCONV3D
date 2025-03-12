@@ -65,7 +65,7 @@ if __name__ == '__main__':
     msconv3d.to(DEVICE)
 
     id = type(msconv3d).__name__ + ('_rgbd' if USE_DEPTH_DATA else '_rgb')
-    msconv3d.load_state_dict(torch.load(f'state_dict/{id}.pt'))
+    msconv3d.load_state_dict(torch.load(f'state_dict/{type(tucrid).__name__}/{id}.pt'))
     #endregion
 
     #region cycle
