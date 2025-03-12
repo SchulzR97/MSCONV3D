@@ -44,7 +44,7 @@ if __name__ == '__main__':
     msconv3d = MSCONV3Ds(use_depth_channel=USE_DEPTH_DATA, sequence_length=SEQUENCE_LENGTH, num_actions=NUM_CLASSES)
     msconv3d.to(DEVICE)
     msconv3d.eval()
-    id = 'msconv3d_v1' + ('_rgbd' if USE_DEPTH_DATA else '_rgb')
+    id = type(tucrid).__name__ + '/' + type(msconv3d).__name__ + ('_rgbd' if USE_DEPTH_DATA else '_rgb')
     msconv3d.load_state_dict(torch.load(f'state_dict/{id}.pt'))
     out_dir = Path('validate').joinpath(id)
     os.makedirs(out_dir, exist_ok=True)
