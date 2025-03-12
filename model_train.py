@@ -157,7 +157,7 @@ if __name__ == '__main__':
         if len(run.data['top_1_accuracy']['val']['avg']) >= 2:
             acc_val_avg_prev = run.data['top_1_accuracy']['val']['avg'][-2]
             if acc_val_avg > acc_val_avg_prev:
-                sd_file = directory_state_dict.joinpath(type(ds_train).__name__, f'{run.id}.pt')
+                sd_file = directory_state_dict.joinpath(f'{run.id}.pt')
                 torch.save(msconv3d.state_dict(), sd_file)
                 console.success(f'Saved state dict: {sd_file}, epoch: {run.epoch}, acc_val_avg: {acc_val_avg:0.6f}')
 
