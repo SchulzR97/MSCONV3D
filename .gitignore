@@ -175,3 +175,6 @@ test.py
 create_gif_depth.py
 backgrounds
 *.html
+DTD
+*yolo*.pt
+.DS_Store
