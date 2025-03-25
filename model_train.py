@@ -29,11 +29,11 @@ if __name__ == '__main__':
     INPUT_SIZE = (400, 400)
     USE_DEPTH_DATA = False
     MOVING_AVERAGE_EPOCHS = 0
-    BATCHES_PER_EPOCH = 5000000
+    BATCHES_PER_EPOCH = 10000000000
     BATCH_SIZE = 4
-    LEARNING_RATE = 1e-4
+    LEARNING_RATE = 5e-5
     EPOCHS = 100000
-    NUM_WORKERS = 6
+    NUM_WORKERS = 10
     DATASET_TYPE = DATASET_TYPE_TUCHRI
     DATASET_DIRECTORY = None
     FOLD = 1
@@ -46,9 +46,6 @@ if __name__ == '__main__':
         DEVICE = 'cpu'
 
     USE_DEPTH_DATA = DATASET_TYPE in [DATASET_TYPE_TUCRID, DATASET_TYPE_UTKINECTACTION3D]
-
-    directory_state_dict = Path('state_dict')
-    directory_state_dict.mkdir(exist_ok=True)
     #endregion
 
     #region data
@@ -367,29 +364,20 @@ if __name__ == '__main__':
         acc_train_avg, acc_val_avg = run.get_avg(m.top_1_accuracy.__name__, 'train'), run.get_avg(m.top_1_accuracy.__name__, 'val')
         acc_train, acc_val = run.get_val(m.top_1_accuracy.__name__, 'train'), run.get_avg(m.top_1_accuracy.__name__, 'val')
 
-        # if acc_train < 0.8 * acc_train_avg:
-        #     console.warn(f'Accuracy train dropped: {acc_train:0.6f} -> load best state dict')
-        #     run.load_best_state_dict(msconv3d)
-        #     continue
-        # if acc_val < 0.8 * acc_val_avg:
-        #     console.warn(f'Accuracy val dropped: {acc_val:0.6f} -> load best state dict')
-        #     run.load_best_state_dict(msconv3d)
-        #     continue
+        if acc_train < 0.8 * acc_train_avg:
+            console.warn(f'Accuracy train dropped: {acc_train:0.6f} -> load best state dict')
+            run.load_best_state_dict(msconv3d)
+            continue
+        if acc_val < 0.8 * acc_val_avg:
+            console.warn(f'Accuracy val dropped: {acc_val:0.6f} -> load best state dict')
+            run.load_best_state_dict(msconv3d)
+            continue
         
         # output
         run.save()
         run.plot()
         run.save_state_dict(msconv3d.state_dict())
         run.save_best_state_dict(msconv3d.state_dict(), acc_val_avg)
-
-        # save state dict if average accuracy improved
-        if len(run.data['top_1_accuracy']['val']['avg']) >= 2:
-            acc_val_avg_prev = run.data['top_1_accuracy']['val']['avg'][-2]
-            if acc_val_avg > acc_val_avg_prev:
-                sd_file = directory_state_dict.joinpath(f'{run.id}.pt')
-                sd_file.parent.mkdir(exist_ok=True, parents=True)
-                torch.save(msconv3d.state_dict(), sd_file)
-                console.success(f'Saved state dict: {sd_file}, epoch: {run.epoch}, acc_val_avg: {acc_val_avg:0.6f}')
 
         print(f'Epoch: {run.epoch}, acc_train: {acc_train_avg:0.6f}, acc_val: {acc_val_avg:0.6f}')
     #endregion
