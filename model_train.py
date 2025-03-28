@@ -1,10 +1,9 @@
 from rsp.ml.dataset import TUCRID, TUCHRI, HMDB51, UCF101, Kinetics, UTKinectAction3D
 from datasets import load_dataset
-from model.msconv3d import MSCONV3Ds, MSCONV3Ds_atten
+from model.msconv3d import MSCONV3Ds
 from rsp.ml.run import Run
 from torch.utils.data import DataLoader
 from pathlib import Path
-from PIL import Image
 import torchvision.transforms as transforms
 import numpy as np
 import rsp.ml.metrics as m
@@ -12,13 +11,10 @@ import rsp.common.console as console
 import rsp.ml.multi_transforms as multi_transforms
 import torch
 import torchvision
-import utils.tensor_helper as tensor_helper
 import utils.transforms_helper as transforms_helper
 import os
-import time
 import cv2 as cv
 import torch.multiprocessing as multiprocessing
-from huggingface_hub import HfApi
 
 #region DATASET_TYPES
 DATASET_TYPE_TUCRID = 'TUCRID'
@@ -363,7 +359,7 @@ if __name__ == '__main__':
         #m.top_1_accuracy.__name__: {'ymin': 0., 'ymax': 1.},
     }
 
-    run_id = f'{type(ds_train).__name__}/{type(msconv3d).__name__}'
+    run_id = f'{DATASET_TYPE}/{type(msconv3d).__name__}'
     if DATASET_TYPE == DATASET_TYPE_TUCRID:
         run_id += ('_rgbd' if USE_DEPTH_DATA else '_rgb')
     if DATASET_TYPE in [DATASET_TYPE_HMDB51, DATASET_TYPE_UCF101]:
