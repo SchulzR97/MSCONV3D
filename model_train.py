@@ -14,7 +14,6 @@ import torchvision
 import utils.transforms_helper as transforms_helper
 import os
 import cv2 as cv
-import torch.multiprocessing as multiprocessing
 
 #region DATASET_TYPES
 DATASET_TYPE_TUCRID = 'TUCRID'
@@ -36,7 +35,7 @@ if __name__ == '__main__':
     LEARNING_RATE = 5e-5
     EPOCHS = 100000
     NUM_WORKERS = 14
-    DATASET_TYPE = DATASET_TYPE_TUCHRI_CS
+    DATASET_TYPE = DATASET_TYPE_UCF101
     DATASET_DIRECTORY = 'datasets'
     FOLD = 1
     
@@ -204,13 +203,11 @@ if __name__ == '__main__':
         dl_train = DataLoader(ds_train, batch_size=BATCH_SIZE, shuffle=True, num_workers=NUM_WORKERS, prefetch_factor=2, persistent_workers=True)
         dl_val = DataLoader(ds_val, batch_size=BATCH_SIZE, shuffle=True, num_workers=NUM_WORKERS, prefetch_factor=2, persistent_workers=True)
     elif DATASET_TYPE == DATASET_TYPE_UCF101:
-        multiprocessing.set_start_method('spawn')
         USE_DEPTH_DATA = True
         transforms_train = multi_transforms.Compose([
-            #multi_transforms.AddMaskChannel(),
-            multi_transforms.Color(0.3, p = 0.5),#multi_transforms.Color(0.1, p = 0.2),
-            multi_transforms.Brightness(0.7, 1.3),#multi_transforms.Brightness(0.7, 1.3),
-            multi_transforms.Satturation(0.7, 1.3),#multi_transforms.Satturation(0.7, 1.3),
+            multi_transforms.Color(0.3, p = 0.5),
+            multi_transforms.Brightness(0.7, 1.3),
+            multi_transforms.Satturation(0.7, 1.3),
             multi_transforms.RandomHorizontalFlip(),
             multi_transforms.GaussianNoise(0.002),
             multi_transforms.RandomCrop(max_scale=1.05),
@@ -218,7 +215,6 @@ if __name__ == '__main__':
             multi_transforms.Stack()
         ])
         transforms_val = multi_transforms.Compose([
-            multi_transforms.AddMaskChannel(),
             multi_transforms.Stack()
         ])
 
