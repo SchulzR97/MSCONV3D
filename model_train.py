@@ -15,14 +15,20 @@ import torchvision
 import utils.tensor_helper as tensor_helper
 import utils.transforms_helper as transforms_helper
 import os
+import time
 import cv2 as cv
+import torch.multiprocessing as multiprocessing
+from huggingface_hub import HfApi
 
+#region DATASET_TYPES
 DATASET_TYPE_TUCRID = 'TUCRID'
 DATASET_TYPE_TUCHRI = 'TUCHRI'
+DATASET_TYPE_TUCHRI_CS = 'TUCHRI-CS'
 DATASET_TYPE_HMDB51 = 'HMDB51'
 DATASET_TYPE_UCF101 = 'UCF101'
 DATASET_TYPE_KINETICS400 = 'KINETICS400'
 DATASET_TYPE_UTKINECTACTION3D = 'UTKinectAction3D'
+#endregion
 
 if __name__ == '__main__':
     #region parameter
@@ -30,12 +36,12 @@ if __name__ == '__main__':
     USE_DEPTH_DATA = False
     MOVING_AVERAGE_EPOCHS = 0
     BATCHES_PER_EPOCH = 10000000000
-    BATCH_SIZE = 4
+    BATCH_SIZE = 8
     LEARNING_RATE = 5e-5
     EPOCHS = 100000
-    NUM_WORKERS = 10
-    DATASET_TYPE = DATASET_TYPE_TUCHRI
-    DATASET_DIRECTORY = None
+    NUM_WORKERS = 14
+    DATASET_TYPE = DATASET_TYPE_TUCHRI_CS
+    DATASET_DIRECTORY = 'datasets'
     FOLD = 1
     
     if torch.cuda.is_available():
@@ -96,7 +102,7 @@ if __name__ == '__main__':
 
         dl_train = DataLoader(ds_train, batch_size=BATCH_SIZE, sampler=sampler_train, num_workers=NUM_WORKERS, prefetch_factor=2, persistent_workers=True)
         dl_val = DataLoader(ds_val, batch_size=BATCH_SIZE, sampler=sampler_val, num_workers=NUM_WORKERS, prefetch_factor=2, persistent_workers=True)
-    elif DATASET_TYPE == DATASET_TYPE_TUCHRI:
+    elif DATASET_TYPE in [DATASET_TYPE_TUCHRI, DATASET_TYPE_TUCHRI_CS]:
         ds_backgrounds = load_dataset('SchulzR97/backgrounds', split='train')
 
         backgrounds = []
@@ -117,23 +123,20 @@ if __name__ == '__main__':
 
 
         transforms_train = multi_transforms.Compose([
-            #multi_transforms.BGR2RGB(),
             multi_transforms.ReplaceBackground(
                 backgrounds = backgrounds,
                 hsv_filter=[
-                    #(69, 87, 139, 255, 52, 255)
-                    (45, 96, 230, 255, 230, 255)
+                    (50, 80, 240, 255, 240, 255)
                 ],
                 p = 0.8,
-                rotate=3,
+                rotate=1,
                 max_scale=1.1,
                 max_noise=0.002
             ),
-            #multi_transforms.RGB2BGR(),
             multi_transforms.Resize(INPUT_SIZE, auto_crop=False),
-            multi_transforms.Color(0.3, p = 0.5),#multi_transforms.Color(0.1, p = 0.2),
-            multi_transforms.Brightness(0.7, 1.3),#multi_transforms.Brightness(0.7, 1.3),
-            multi_transforms.Satturation(0.7, 1.3),#multi_transforms.Satturation(0.7, 1.3),
+            multi_transforms.Color(0.2, p = 0.5),
+            multi_transforms.Brightness(0.7, 1.3),
+            multi_transforms.Satturation(0.7, 1.3),
             multi_transforms.RandomHorizontalFlip(),
             multi_transforms.GaussianNoise(0.002),
             multi_transforms.RandomCrop(max_scale=1.05),
@@ -147,16 +150,18 @@ if __name__ == '__main__':
 
         ds_train = TUCHRI(
             split='train',
-            load_depth_data=False,
             sequence_length=30,
-            transforms=transforms_train
+            transforms=transforms_train,
+            cache_dir=Path(DATASET_DIRECTORY).joinpath(DATASET_TYPE) if DATASET_DIRECTORY else None,
+            validation_type='cross_subject' if DATASET_TYPE == DATASET_TYPE_TUCHRI_CS else 'default'
         )
         sampler_train = ds_train.get_uniform_sampler()
         ds_val = TUCHRI(
             split='val',
-            load_depth_data=False,
             sequence_length=30,
-            transforms=transforms_val
+            transforms=transforms_val,
+            cache_dir=Path(DATASET_DIRECTORY).joinpath(DATASET_TYPE) if DATASET_DIRECTORY else None,
+            validation_type='cross_subject' if DATASET_TYPE == DATASET_TYPE_TUCHRI_CS else 'default'
         )
 
         # for _ in range(1000):
@@ -164,8 +169,11 @@ if __name__ == '__main__':
         #     X, T = ds_train[i]
         #     for x in X:
         #         img = x.permute(1, 2, 0).numpy()
-        #         cv.imshow('img', img)
-        #         cv.waitKey(10)
+        #         #cv.imshow('img', img)
+        #         #cv.waitKey(10)
+        #         img = np.array(img*255, dtype=np.uint8)
+        #         cv.imwrite('test.png', img)
+        #         time.sleep(1)
 
         dl_train = DataLoader(ds_train, batch_size=BATCH_SIZE, sampler=sampler_train, num_workers=NUM_WORKERS, prefetch_factor=2 if NUM_WORKERS > 0 else None, persistent_workers=NUM_WORKERS>0)
         dl_val = DataLoader(ds_val, batch_size=BATCH_SIZE, sampler=None, num_workers=NUM_WORKERS, prefetch_factor=2 if NUM_WORKERS > 0 else None, persistent_workers=NUM_WORKERS>0)
@@ -200,17 +208,22 @@ if __name__ == '__main__':
         dl_train = DataLoader(ds_train, batch_size=BATCH_SIZE, shuffle=True, num_workers=NUM_WORKERS, prefetch_factor=2, persistent_workers=True)
         dl_val = DataLoader(ds_val, batch_size=BATCH_SIZE, shuffle=True, num_workers=NUM_WORKERS, prefetch_factor=2, persistent_workers=True)
     elif DATASET_TYPE == DATASET_TYPE_UCF101:
+        multiprocessing.set_start_method('spawn')
+        USE_DEPTH_DATA = True
         transforms_train = multi_transforms.Compose([
+            #multi_transforms.AddMaskChannel(),
             multi_transforms.Color(0.3, p = 0.5),#multi_transforms.Color(0.1, p = 0.2),
-            multi_transforms.Brightness(0.5, 1.5),#multi_transforms.Brightness(0.7, 1.3),
-            multi_transforms.Satturation(0.5, 1.5),#multi_transforms.Satturation(0.7, 1.3),
+            multi_transforms.Brightness(0.7, 1.3),#multi_transforms.Brightness(0.7, 1.3),
+            multi_transforms.Satturation(0.7, 1.3),#multi_transforms.Satturation(0.7, 1.3),
             multi_transforms.RandomHorizontalFlip(),
             multi_transforms.GaussianNoise(0.002),
-            multi_transforms.RandomCrop(max_scale=1.1),
+            multi_transforms.RandomCrop(max_scale=1.05),
             multi_transforms.Rotate(max_angle=3),
             multi_transforms.Stack()
         ])
         transforms_val = multi_transforms.Compose([
+            multi_transforms.AddMaskChannel(),
+            multi_transforms.Stack()
         ])
 
         ds_train = UCF101(
@@ -218,17 +231,30 @@ if __name__ == '__main__':
             fold=FOLD,
             transforms=transforms_train,
             target_size=INPUT_SIZE,
-            verbose=False
+            verbose=False,
+            cache_dir=Path(DATASET_DIRECTORY).joinpath('UCF101') if DATASET_DIRECTORY else None
         )
         ds_val = UCF101(
             split='val',
             fold=FOLD,
             transforms=transforms_val,
             target_size=INPUT_SIZE,
-            verbose=False
+            verbose=False,
+            cache_dir=Path(DATASET_DIRECTORY).joinpath('UCF101') if DATASET_DIRECTORY else None
         )
-        dl_train = DataLoader(ds_train, batch_size=BATCH_SIZE, shuffle=True, num_workers=NUM_WORKERS, prefetch_factor=2, persistent_workers=False)
-        dl_val = DataLoader(ds_val, batch_size=BATCH_SIZE, shuffle=True, num_workers=NUM_WORKERS, prefetch_factor=2, persistent_workers=False)
+        dl_train = DataLoader(ds_train, batch_size=BATCH_SIZE, shuffle=True, num_workers=NUM_WORKERS, prefetch_factor=2 if NUM_WORKERS > 0 else None, persistent_workers=NUM_WORKERS>0, pin_memory_device=DEVICE if NUM_WORKERS>0 else '', pin_memory=NUM_WORKERS>0)
+        dl_val = DataLoader(ds_val, batch_size=BATCH_SIZE, shuffle=True, num_workers=NUM_WORKERS, prefetch_factor=2 if NUM_WORKERS > 0 else None, persistent_workers=NUM_WORKERS>0, pin_memory_device=DEVICE if NUM_WORKERS>0 else '', pin_memory=NUM_WORKERS>0)
+
+        # for batch_X, batch_T in dl_train:
+        #     for X in batch_X:
+        #         for x in X.cpu():
+        #             img = np.array(x.permute(1, 2, 0).numpy() * 255, dtype=np.uint8)
+        #             img_rgb = img[:, :, :3]
+        #             img_mask = img[:, :, 3]
+
+        #             cv.imwrite('test_rgb.png', img_rgb)
+        #             cv.imwrite('test_mask.png', img_mask)
+        #             time.sleep(0.5)
     elif DATASET_TYPE == DATASET_TYPE_UTKINECTACTION3D:      
         transforms_bg = transforms.Compose([
             transforms.Resize((600, 600)),
@@ -312,6 +338,10 @@ if __name__ == '__main__':
         dl_train = DataLoader(ds_train, batch_size=BATCH_SIZE, shuffle=True, num_workers=NUM_WORKERS, prefetch_factor=2, persistent_workers=True)
         dl_val = DataLoader(ds_val, batch_size=BATCH_SIZE, shuffle=True, num_workers=NUM_WORKERS, prefetch_factor=2, persistent_workers=True)
 
+    console.success(f'Loaded dataset: {type(ds_train).__name__} ' +
+                    f'train: {len(ds_train)} ({len(ds_train)/(len(ds_train)+len(ds_val))*100:0.2f}%), ' +
+                    f'val: {len(ds_val)} ({len(ds_val)/(len(ds_train)+len(ds_val))*100:0.2f}%)')
+
     if len(ds_train.action_labels) > 20:
         action_labels = [f'A{i:0>3}' for i in range(len(ds_train.action_labels))]
     else:
@@ -336,7 +366,7 @@ if __name__ == '__main__':
     run_id = f'{type(ds_train).__name__}/{type(msconv3d).__name__}'
     if DATASET_TYPE == DATASET_TYPE_TUCRID:
         run_id += ('_rgbd' if USE_DEPTH_DATA else '_rgb')
-    if DATASET_TYPE == DATASET_TYPE_HMDB51:
+    if DATASET_TYPE in [DATASET_TYPE_HMDB51, DATASET_TYPE_UCF101]:
         if FOLD is not None:
             run_id += f'_fold{FOLD}'   
     run = Run(
