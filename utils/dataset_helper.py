@@ -134,10 +134,7 @@ def load_datasets(dataset_type, input_size, dataset_directory, fold):
             multi_transforms.Rotate(max_angle=3),
             multi_transforms.Stack()
         ])
-        transforms_val = multi_transforms.Compose([
-            multi_transforms.AddMaskChannel(),
-            multi_transforms.Stack()
-        ])
+        transforms_val = multi_transforms.Compose([])
 
         ds_train = UCF101(
             split='train',
@@ -145,7 +142,8 @@ def load_datasets(dataset_type, input_size, dataset_directory, fold):
             transforms=transforms_train,
             target_size=input_size,
             verbose=False,
-            cache_dir=Path(dataset_directory).joinpath('UCF101') if dataset_directory else None
+            cache_dir=Path(dataset_directory).joinpath('UCF101') if dataset_directory else None,
+            load_person_masks=True
         )
         ds_val = UCF101(
             split='val',
@@ -153,7 +151,8 @@ def load_datasets(dataset_type, input_size, dataset_directory, fold):
             transforms=transforms_val,
             target_size=input_size,
             verbose=False,
-            cache_dir=Path(dataset_directory).joinpath('UCF101') if dataset_directory else None
+            cache_dir=Path(dataset_directory).joinpath('UCF101') if dataset_directory else None,
+            load_person_masks=True
         )
         
         # for batch_X, batch_T in dl_train:
