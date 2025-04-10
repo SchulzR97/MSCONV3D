@@ -53,7 +53,7 @@ class Conv3DBlock(nn.Module):
 class MSCONV3Ds(nn.Module):
     def __init__(
             self,
-            use_depth_channel:bool,
+            use_depth_channel:bool = False,
             sequence_length = 30,
             num_actions:int = 10,
             p_dropout:float = 0.5
@@ -118,7 +118,7 @@ class MSCONV3Ds(nn.Module):
         self.dropout = nn.Dropout(p = p_dropout)
         self.softmax = nn.Softmax(dim = 1)
 
-    def forward(self, X):
+    def forward(self, X:torch.Tensor):
         Y = X
 
         Y1 = self.conv1(Y)
