@@ -11,17 +11,19 @@ import cv2 as cv
 
 if __name__ == '__main__':
     #region parameter
-    INPUT_SIZE = (375, 512)#(400, 400)
+    INPUT_SIZE = (400, 400)
+   # INPUT_SIZE = (375, 512)
     USE_DEPTH_DATA = False
-    MOVING_AVERAGE_EPOCHS = 20
-    BATCHES_PER_EPOCH = 10#10000000000
+    MOVING_AVERAGE_EPOCHS = 0
+    BATCHES_PER_EPOCH = 10000000000
     BATCH_SIZE = 4
-    LEARNING_RATE = 1e-3
+    LEARNING_RATE = 1e-5
     P_DROPOUT = 0.2
     EPOCHS = 100000
     NUM_WORKERS = 8
-    DATASET = DATASET_TYPE.TUCHRI_CS
-    DATASET_DIRECTORY = None#'datasets'
+    DATASET = DATASET_TYPE.TUCHRI
+    DATASET_DIRECTORY = '/home/schulzr/Documents/datasets'
+    ADDITIONAL_BACKGROUNDS_DIR = '/media/schulzr/ACA02F26A02EF70C/data/TUCRID/sequences/realsense/background'   # set to None if you don't want to include own backgrounds
     FOLD = 1
     
     if torch.cuda.is_available():
@@ -39,13 +41,20 @@ if __name__ == '__main__':
         dataset_type=DATASET,
         input_size=INPUT_SIZE,
         dataset_directory=DATASET_DIRECTORY,
-        fold=FOLD
+        fold=FOLD,
+        additional_backgrounds_dir=ADDITIONAL_BACKGROUNDS_DIR
     )
+
+    if hasattr(ds_train, 'get_uniform_sampler'):
+        sampler_train = ds_train.get_uniform_sampler()
+    else:
+        sampler_train = None
 
     dl_train = DataLoader(
         ds_train,
         batch_size=BATCH_SIZE,
-        shuffle=True,
+        shuffle=sampler_train is None,
+        sampler=sampler_train,
         num_workers=NUM_WORKERS,
         prefetch_factor=2 if NUM_WORKERS > 0 else None,
         persistent_workers=NUM_WORKERS>0,
@@ -80,7 +89,7 @@ if __name__ == '__main__':
     #endregion
 
     #region model 
-    msconv3d = MSCONV3Dm(
+    msconv3d = MSCONV3Ds(
         use_depth_channel=USE_DEPTH_DATA, 
         sequence_length=ds_train.sequence_length, 
         num_actions=len(ds_train.action_labels), 

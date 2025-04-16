@@ -1,21 +1,24 @@
 from model.msconv3d import MSCONV3Ds
-from rsp.ml.dataset import TUCRID
 from pathlib import Path
 from tqdm import tqdm
 from torch.utils.data import DataLoader
+from rsp.ml.dataset import TUCHRI
 import rsp.ml.metrics as m
 import rsp.ml.multi_transforms as multi_transforms
 import torch
 import os
 import utils.tensor_helper as tensor_helper
+from utils.model_helper import load_model_from_run
 
 if __name__ == '__main__':
     #region parameter
     INPUT_SIZE = (400, 400)
     SEQUENCE_LENGTH = 30
     USE_DEPTH_DATA = False
-    NUM_CLASSES = 7
+    NUM_CLASSES = 11
     BATCH_SIZE = 4
+    RUN_ID = 'TUCHRI/MSCONV3Ds'
+    DATASET_DIRECTORY = '/home/schulzr/Documents/datasets/TUCHRI'
     
     if torch.cuda.is_available():
         DEVICE = 'cuda'
@@ -30,23 +33,24 @@ if __name__ == '__main__':
         multi_transforms.Resize(INPUT_SIZE, auto_crop=False),
         multi_transforms.Stack()
     ])
-    tucrid = TUCRID(
-        phase='val',
-        load_depth_data=USE_DEPTH_DATA,
+    tuchri = TUCHRI(
+        split='val',
+        validation_type='default',
         sequence_length=SEQUENCE_LENGTH,
-        num_classes=NUM_CLASSES,
-        transforms=transforms
+        cache_dir=DATASET_DIRECTORY,
+        transforms=multi_transforms.Compose([
+            multi_transforms.Resize(INPUT_SIZE, auto_crop=False),
+            multi_transforms.Stack()
+        ])
     )
-    dataloader = DataLoader(tucrid, batch_size=BATCH_SIZE, shuffle=True)
+    dataloader = DataLoader(tuchri, batch_size=BATCH_SIZE, shuffle=True)
     #endregion
 
     #region run
-    msconv3d = MSCONV3Ds(use_depth_channel=USE_DEPTH_DATA, sequence_length=SEQUENCE_LENGTH, num_actions=NUM_CLASSES)
+    msconv3d = load_model_from_run(RUN_ID, NUM_CLASSES, USE_DEPTH_DATA, SEQUENCE_LENGTH)
     msconv3d.to(DEVICE)
     msconv3d.eval()
-    id = type(tucrid).__name__ + '/' + type(msconv3d).__name__ + ('_rgbd' if USE_DEPTH_DATA else '_rgb')
-    msconv3d.load_state_dict(torch.load(f'state_dict/{id}.pt'))
-    out_dir = Path('validate').joinpath(id)
+    out_dir = Path('validate').joinpath(RUN_ID)
     os.makedirs(out_dir, exist_ok=True)
     #endregion
 
@@ -78,8 +82,8 @@ if __name__ == '__main__':
 
         TP += (true_action == predicted_action).sum().item()
 
-        m.plot_confusion_matrix(confusion_matrix, labels=tucrid.labels, save_file_name=out_dir.joinpath('confusion_matrix.png'))
-        m.plot_confusion_matrix(confusion_matrix_rel, labels=tucrid.labels, save_file_name=out_dir.joinpath('confusion_matrix_rel.png'))
+        m.plot_confusion_matrix(confusion_matrix, labels=tuchri.action_labels, save_file_name=str(out_dir.joinpath('confusion_matrix.png')))
+        m.plot_confusion_matrix(confusion_matrix_rel, labels=tuchri.action_labels, save_file_name=str(out_dir.joinpath('confusion_matrix_rel.png')))
 
         prog.set_description(f'validate - accuracy: {TP / (i + 1):.4f} ({TP}/{i+1})')
 

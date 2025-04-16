@@ -182,3 +182,5 @@ datasets
 fastest_parameters.png
 fastest_parameters.json
 calc_fastest_parameters.py
+validate
+test.png

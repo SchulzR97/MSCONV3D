@@ -8,6 +8,7 @@ from utils import transforms_helper
 from pathlib import Path
 from rsp.ml.dataset import TUCHRI, UCF101, HMDB51, Kinetics, UTKinectAction3D
 from datasets import load_dataset
+from glob import glob
 
 #region DATASET_TYPE
 class DATASET_TYPE():
@@ -21,7 +22,7 @@ class DATASET_TYPE():
 #endregion
 
 #region data
-def load_datasets(dataset_type, input_size, dataset_directory, fold):
+def load_datasets(dataset_type, input_size, dataset_directory, fold, additional_backgrounds_dir):
     if dataset_type in [DATASET_TYPE.TUCHRI, DATASET_TYPE.TUCHRI_CS]:
         ds_backgrounds = load_dataset('SchulzR97/backgrounds', split='train')
 
@@ -40,6 +41,14 @@ def load_datasets(dataset_type, input_size, dataset_directory, fold):
                 img = img[:, start:start+500, :]
 
             backgrounds.append(img)
+
+        if additional_backgrounds_dir is not None:
+            bg_files = glob(f'{additional_backgrounds_dir}/*_color.jpg')
+            
+            for bg_file in bg_files:
+                img = cv.imread(bg_file)
+                img = cv.resize(img, (500, 375))
+                backgrounds.append(img)
 
 
         transforms_train = multi_transforms.Compose([
@@ -89,11 +98,11 @@ def load_datasets(dataset_type, input_size, dataset_directory, fold):
         #     X, T = ds_train[i]
         #     for x in X:
         #         img = x.permute(1, 2, 0).numpy()
-        #         #cv.imshow('img', img)
-        #         #cv.waitKey(10)
-        #         img = np.array(img*255, dtype=np.uint8)
-        #         cv.imwrite('test.png', img)
-        #         time.sleep(1)
+        #         cv.imshow('img', img)
+        #         cv.waitKey(10)
+        #         #img = np.array(img*255, dtype=np.uint8)
+        #         #cv.imwrite('test.png', img)
+        #         #time.sleep(1)
 
     elif dataset_type == DATASET_TYPE.HMDB51:
         transforms_train = multi_transforms.Compose([
