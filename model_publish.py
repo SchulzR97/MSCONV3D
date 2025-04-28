@@ -37,6 +37,7 @@ if __name__ == '__main__':
     WEIGHTS_ID += '-LAB'   
     
     model = load_model_from_run(RUN_ID, NUM_ACTIONS, USE_DEPTH_CHANNEL, SEQUENCE_LENGTH)
+    model.eval()
 
     publish_model(
         model=model,
