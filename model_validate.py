@@ -8,17 +8,24 @@ import rsp.ml.multi_transforms as multi_transforms
 import torch
 import os
 import utils.tensor_helper as tensor_helper
+from utils.dataset_helper import DATASET_TYPE, load_datasets
 from utils.model_helper import load_model_from_run
 
 if __name__ == '__main__':
     #region parameter
     INPUT_SIZE = (400, 400)
-    SEQUENCE_LENGTH = 30
     USE_DEPTH_DATA = False
-    NUM_CLASSES = 11
     BATCH_SIZE = 4
-    RUN_ID = 'TUCHRI/MSCONV3Ds'
-    DATASET_DIRECTORY = '/home/schulzr/Documents/datasets/TUCHRI'
+    #RUN_ID = 'TUCHRI/MSCONV3Ds'
+    RUN_ID = 'UCF101/MSCONV3Ds'
+    DATASET = DATASET_TYPE.UCF101
+    DATASET_DIRECTORY = '/home/schulzr/Documents/datasets'
+    FOLD = 1
+
+    RUN_ID = DATASET
+    if DATASET in [DATASET_TYPE.UCF101] and FOLD is not None:
+        RUN_ID += f'_fold{FOLD}'
+    RUN_ID += '/MSCONV3Ds'
     
     if torch.cuda.is_available():
         DEVICE = 'cuda'
@@ -29,25 +36,23 @@ if __name__ == '__main__':
     #endregion
 
     #region data
-    transforms = multi_transforms.Compose([
-        multi_transforms.Resize(INPUT_SIZE, auto_crop=False),
-        multi_transforms.Stack()
-    ])
-    tuchri = TUCHRI(
-        split='val',
-        validation_type='default',
-        sequence_length=SEQUENCE_LENGTH,
-        cache_dir=DATASET_DIRECTORY,
-        transforms=multi_transforms.Compose([
-            multi_transforms.Resize(INPUT_SIZE, auto_crop=False),
-            multi_transforms.Stack()
-        ])
+    ds_train, ds_val = load_datasets(
+        dataset_type=DATASET,
+        input_size=INPUT_SIZE,
+        dataset_directory=DATASET_DIRECTORY,
+        fold=FOLD,
+        additional_backgrounds_dir=None
     )
-    dataloader = DataLoader(tuchri, batch_size=BATCH_SIZE, shuffle=True)
+    dataloader = DataLoader(ds_val, batch_size=BATCH_SIZE, shuffle=True)
+
+    if len(ds_val.action_labels) <= 20:
+        action_labels = ds_val.action_labels
+    else:
+        action_labels = [f'A{i:0>3}' for i in range(len(ds_val.action_labels))]
     #endregion
 
     #region run
-    msconv3d = load_model_from_run(RUN_ID, NUM_CLASSES, USE_DEPTH_DATA, SEQUENCE_LENGTH)
+    msconv3d = load_model_from_run(RUN_ID, len(ds_val.action_labels), USE_DEPTH_DATA, ds_val.sequence_length)
     msconv3d.to(DEVICE)
     msconv3d.eval()
     out_dir = Path('validate').joinpath(RUN_ID)
@@ -82,8 +87,8 @@ if __name__ == '__main__':
 
         TP += (true_action == predicted_action).sum().item()
 
-        m.plot_confusion_matrix(confusion_matrix, labels=tuchri.action_labels, save_file_name=str(out_dir.joinpath('confusion_matrix.png')))
-        m.plot_confusion_matrix(confusion_matrix_rel, labels=tuchri.action_labels, save_file_name=str(out_dir.joinpath('confusion_matrix_rel.png')))
+        m.plot_confusion_matrix(confusion_matrix, labels=action_labels, save_file_name=str(out_dir.joinpath('confusion_matrix.png')))
+        m.plot_confusion_matrix(confusion_matrix_rel, labels=action_labels, save_file_name=str(out_dir.joinpath('confusion_matrix_rel.png')))
 
         prog.set_description(f'validate - accuracy: {TP / (i + 1):.4f} ({TP}/{i+1})')
 

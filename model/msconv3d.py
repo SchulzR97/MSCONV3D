@@ -261,13 +261,13 @@ class MSCONV3Dm(nn.Module):
 
             self.flatten = nn.Flatten(start_dim=1)
             self.readout = nn.Linear(dim_in, num_actions)
-            self.dropout = nn.Dropout(p=p_dropout)
+            #self.dropout = nn.Dropout(p=p_dropout)
             self.softmax = nn.Softmax(dim=1)
         
         def forward(self, X:torch.Tensor):
             Y = self.flatten(X)
             Y = self.readout(Y)
-            Y = self.dropout(Y)
+            #Y = self.dropout(Y)
             Y = self.softmax(Y)
 
             return Y

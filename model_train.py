@@ -11,18 +11,18 @@ import cv2 as cv
 
 if __name__ == '__main__':
     #region parameter
-    #INPUT_SIZE = (400, 400)
-    INPUT_SIZE = (375, 512)
+    INPUT_SIZE = (400, 400)
+    #INPUT_SIZE = (375, 512)
     USE_DEPTH_DATA = False
-    MOVING_AVERAGE_EPOCHS = 10
-    BATCHES_PER_EPOCH = 50#10000000000
-    BATCH_SIZE = 2#4
-    LEARNING_RATE = 1e-4
-    P_DROPOUT = 0.2
+    MOVING_AVERAGE_EPOCHS = 0#10
+    BATCHES_PER_EPOCH = 50000000
+    BATCH_SIZE = 4#2
+    LEARNING_RATE = 1e-5#1e-4
+    P_DROPOUT = 0.7#0.2
     EPOCHS = 100000
-    NUM_WORKERS = 8
-    DATASET = DATASET_TYPE.TUCHRI
-    DATASET_DIRECTORY = None#'/home/schulzr/Documents/datasets'
+    NUM_WORKERS = 6#8
+    DATASET = DATASET_TYPE.UCF101
+    DATASET_DIRECTORY = '/home/schulzr/Documents/datasets'
     ADDITIONAL_BACKGROUNDS_DIR = None#'/media/schulzr/ACA02F26A02EF70C/data/TUCRID/sequences/realsense/background'   # set to None if you don't want to include own backgrounds
     FOLD = 1
     
@@ -76,9 +76,6 @@ if __name__ == '__main__':
     #             #cv.imshow('img_mask', img_mask)
     #             cv.waitKey(30)
     #         pass
-    
-    if DATASET == DATASET_TYPE.UCF101:
-        USE_DEPTH_DATA = True
 
     if len(ds_train.action_labels) > 20:
         action_labels = [f'A{i:0>3}' for i in range(len(ds_train.action_labels))]
@@ -87,7 +84,7 @@ if __name__ == '__main__':
     #endregion
 
     #region model 
-    msconv3d = MSCONV3Dm(
+    msconv3d = MSCONV3Ds(
         use_depth_channel=USE_DEPTH_DATA, 
         sequence_length=ds_train.sequence_length, 
         num_actions=len(ds_train.action_labels), 

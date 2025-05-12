@@ -134,16 +134,20 @@ def load_datasets(dataset_type, input_size, dataset_directory, fold, additional_
         )
     elif dataset_type == DATASET_TYPE.UCF101:
         transforms_train = multi_transforms.Compose([
-            multi_transforms.Color(0.3, p = 0.5),#multi_transforms.Color(0.1, p = 0.2),
-            multi_transforms.Brightness(0.7, 1.3),#multi_transforms.Brightness(0.7, 1.3),
-            multi_transforms.Satturation(0.7, 1.3),#multi_transforms.Satturation(0.7, 1.3),
+            multi_transforms.Resize(input_size, auto_crop=False),
+            multi_transforms.Color(0.5, p = 1.0),#multi_transforms.Color(0.1, p = 0.2),
+            multi_transforms.Brightness(0.5, 1.5),#multi_transforms.Brightness(0.7, 1.3),
+            multi_transforms.Satturation(0.5, 1.5),#multi_transforms.Satturation(0.7, 1.3),
             multi_transforms.RandomHorizontalFlip(),
-            multi_transforms.GaussianNoise(0.002),
-            multi_transforms.RandomCrop(max_scale=1.05),
-            multi_transforms.Rotate(max_angle=3),
+            multi_transforms.GaussianNoise(0.004),
+            multi_transforms.RandomCrop(max_scale=1.1),
+            multi_transforms.Rotate(max_angle=5),
             multi_transforms.Stack()
         ])
-        transforms_val = multi_transforms.Compose([])
+        transforms_val = multi_transforms.Compose([
+            multi_transforms.Resize(input_size, auto_crop=False),
+            multi_transforms.Stack()
+        ])
 
         ds_train = UCF101(
             split='train',
@@ -152,7 +156,7 @@ def load_datasets(dataset_type, input_size, dataset_directory, fold, additional_
             target_size=input_size,
             verbose=False,
             cache_dir=Path(dataset_directory).joinpath('UCF101') if dataset_directory else None,
-            load_person_masks=True
+            load_person_masks=False
         )
         ds_val = UCF101(
             split='val',
@@ -161,7 +165,7 @@ def load_datasets(dataset_type, input_size, dataset_directory, fold, additional_
             target_size=input_size,
             verbose=False,
             cache_dir=Path(dataset_directory).joinpath('UCF101') if dataset_directory else None,
-            load_person_masks=True
+            load_person_masks=False
         )
         
         # for batch_X, batch_T in dl_train:
